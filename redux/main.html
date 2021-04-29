@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/4.0.0-beta.1/redux.js" integrity="sha512-a18iH5k0MJdFLaOvN1STjT2wNpH4tjIKSuWXZOZ7nWxkMydoMGZCkQ88Ch/RnAVzVVNVfhl3dxyg5UKABKhr0Q==" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <div id="subject"></div>
+        <div id="toc"></div>
+        <div id="control"></div>
+        <div id="content"></div>
+
+        <script>
+            function subject(){
+                document.querySelector('#subject').innerHTML = `
+                <header>
+                    <h1>WEB</h1>
+                    Hello, Web!
+                </header>
+                `;
+            }
+           
+            function toc(){
+                let state = store.getState();
+                let liTags = '';
+
+                for(var i in state.contents){
+                    liTags += `
+                        <li>
+                            <a
+                                onclick="
+                                    event.preventDefault();
+                                    let action = {
+                                        type:'SELECT',
+                                        id: ${state.contents[i].id}
+                                    }
+                                    store.dispatch(action);
+                                "
+                                href=${state.contents[i].id}>
+                                ${state.contents[i].title}
+                            </a>
+                        </li>
+                    `;
+                }
+                document.querySelector('#toc').innerHTML = `
+                    <nav>
+                        <ol>
+                            ${liTags}                            
+                        </ol>
+                    </nav>
+                `;
+            }
+
+            function control(){
+
+                document.querySelector('#control').innerHTML = `
+                    <ul>
+                        <li>
+                            <a href="/create"
+                            onclick="
+                                event.preventDefault();
+                                store.dispatch({
+                                    type:'CHANGE_MODE',
+                                    mode: 'create'
+                                })
+                            "
+                            >create</a>
+                        </li>
+                        <li>
+                            <input type="button" value="delete"
+                                onclick="
+                                    event.preventDefault();
+                                    store.dispatch(
+                                        {type: 'DELETE'}
+                                    );
+                                "
+                            >
+                        </li>
+                    </ul>
+                `;
+            }
+
+            function article(){
+                let state = store.getState();
+                let content = ``;
+                
+                if(state.mode === 'welcome'){
+                    content = `
+                        <article>
+                            <h2>WELCOME</h2>
+                            Hello, Redux!!!
+                        </article>
+                    `;
+                }else if(state.mode === 'read'){
+                    
+                    let _title, _desc;
+
+                    for(var i in state.contents){
+                        if(state.selected_id === state.contents[i].id){
+                            _title = state.contents[i].title;
+                            _desc = state.contents[i].desc;
+
+                            break;
+                        }
+                    }
+                    content = `
+                        <article>
+                            <h2>${_title}</h2>
+                            ${_desc}
+                        </article>
+                    `;
+                
+                }else if(state.mode === 'create'){
+                    content =  `
+                        <article>
+                            <form onsubmit="
+                                    event.preventDefault();
+                                    let _title = this.title.value;
+                                    let _desc = this.desc.value;
+
+                                    console.log(_title, _desc);
+
+                                    store.dispatch({
+                                        type: 'CREATE',
+                                        title: _title,
+                                        desc: _desc
+                                    });
+                                "
+                            >
+                                <p>
+                                    <input type="text" name="title" placeholder="title">
+                                </p>
+                                <p>
+                                    <textarea name="desc" placeholder="description">
+                                    </textarea>
+                                </p>
+                                <p>
+                                    <input type="submit">
+                                </p>
+                            </form>
+                        </article>
+                    `;
+                }
+
+                document.querySelector('#content').innerHTML = content;
+            }
+
+            function reducer(state, action){
+                if(state === undefined){
+                    return({
+                        mode: 'welcome',
+                        selected_id: 1,
+                        contents:[
+                            {id:1, title:'HTML', desc: 'HTML is ...'},
+                            {id:2, title:'CSS', desc: 'CSS is ...'}
+                        ],
+                        max_id: 2
+                    });
+                }
+                let newState;
+                let newContents;
+                if(action.type === 'SELECT'){
+                    newState = Object.assign({},state,{
+                        mode:'read',
+                        selected_id: action.id
+                    });
+
+                    console.log(action, state, newState);
+                }else if(action.type === 'CHANGE_MODE'){
+                    newState = Object.assign({},state,{mode: action.mode});
+                }else if(action.type === 'CREATE'){
+                    newContents = state.contents.concat();
+                    let new_max_id = state.max_id + 1;
+                    
+                    newContents.push({
+                        id: new_max_id, title: action.title, desc: action.desc
+                    });
+
+                    newState = Object.assign({}, state, {
+                        mode: 'read',
+                        selected_id: new_max_id,
+                        contents: newContents,
+                        max_id: new_max_id
+                    });
+                }else if(action.type === 'DELETE'){
+                    newContents = [];
+                    for(var i in state.contents){
+                        /*
+                        if(state.contents[i].id === state.selected_id){
+                            newContents.slice(i,1);
+                            break;
+                        }
+                        */
+                       if(state.contents[i].id !== state.selected_id){
+                            newContents.push(state.contents[i]);
+                       }
+                    }//end of for()
+                    newState = Object.assign({}, state, {
+                        mode:'welcome',
+                        contents: newContents
+                    })
+                }
+                return newState;
+            }//end of reducer()
+
+            let store = Redux.createStore(reducer);
+            store.subscribe(article);
+            store.subscribe(toc);
+
+            subject();
+            toc();
+            control();
+            article();
+        </script>
+    </body>
+</html>
